@@ -249,7 +249,7 @@ properties:
           pointing_engdb_quality:
             title: Quality of pointing information from EngDB
             type: string
-            enum: [CALCULATED, PLANNED]
+            enum: [CALCULATED_ORIGINAL, CALCULATED_GSCMD, CALCULATED_GSCMD_V3PAGS, PLANNED]
             fits_keyword: ENGQLPTG
             blend_table: True
           type:
