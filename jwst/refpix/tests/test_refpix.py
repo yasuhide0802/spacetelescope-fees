@@ -7,6 +7,10 @@ from jwst.refpix import RefPixStep
 from jwst.refpix.reference_pixels import Dataset, NIRDataset, correct_model, create_dataset
 
 
+REFERENCE_PIXEL = dqflags.pixel["REFERENCE_PIXEL"]
+DO_NOT_USE = dqflags.pixel["DO_NOT_USE"]
+
+
 def test_refpix_subarray():
     '''Check that the correction is skipped for MIR subarray data '''
 
@@ -60,8 +64,8 @@ def test_each_amp():
     im.data[:, 1:, :, 1031] = 4.0
 
     # set reference pixels to 'REFERENCE_PIXEL'
-    im.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
-    im.pixeldq[:, 1028:] = dqflags.pixel['REFERENCE_PIXEL']
+    im.pixeldq[:, :4] = REFERENCE_PIXEL
+    im.pixeldq[:, 1028:] = REFERENCE_PIXEL
 
     # run the step
     out = RefPixStep.call(im)
@@ -104,8 +108,8 @@ def test_firstframe_sub():
     im.data[:, :, :, 1031] = 4.0
 
     # set reference pixels to 'REFERENCE_PIXEL'
-    im.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
-    im.pixeldq[:, 1028:] = dqflags.pixel['REFERENCE_PIXEL']
+    im.pixeldq[:, :4] = REFERENCE_PIXEL
+    im.pixeldq[:, 1028:] = REFERENCE_PIXEL
 
     # run the step
     outim = RefPixStep.call(im)
@@ -149,8 +153,8 @@ def test_odd_even():
     im.data[:, 1:, 0:ysize - 1:2, 1031] = 8.0
 
     # set reference pixels to 'REFERENCE_PIXEL'
-    im.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
-    im.pixeldq[:, 1028:] = dqflags.pixel['REFERENCE_PIXEL']
+    im.pixeldq[:, :4] = REFERENCE_PIXEL
+    im.pixeldq[:, 1028:] = REFERENCE_PIXEL
 
     # run the step
     out = RefPixStep.call(im)
@@ -165,6 +169,11 @@ def test_odd_even():
     assert out.data[0, 5, 101, 5] == 48.0
     assert out.data[0, 5, 101, 6] == 47.0
     assert out.data[0, 5, 101, 7] == 46.0
+
+    # Make sure reference pixel DQs are set to DO_NOT_USE
+    mask1 = out.pixeldq & REFERENCE_PIXEL == REFERENCE_PIXEL
+    mask2 = out.pixeldq & DO_NOT_USE == DO_NOT_USE
+    np.testing.assert_array_equal(mask1, mask1 & mask2)
 
 
 def test_no_odd_even():
@@ -201,8 +210,8 @@ def test_no_odd_even():
     im.data[:, 1:, 0:ysize - 1:2, 1031] = 8.0
 
     # set reference pixels to 'REFERENCE_PIXEL'
-    im.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
-    im.pixeldq[:, 1028:] = dqflags.pixel['REFERENCE_PIXEL']
+    im.pixeldq[:, :4] = REFERENCE_PIXEL
+    im.pixeldq[:, 1028:] = REFERENCE_PIXEL
 
     # run the step
     out = RefPixStep.call(im, odd_even_rows=False)
@@ -241,8 +250,8 @@ def test_side_averaging():
     im.data[:, 1:, :, 1028:] = 2.0
 
     # set reference pixels to 'REFERENCE_PIXEL'
-    im.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
-    im.pixeldq[:, 1028:] = dqflags.pixel['REFERENCE_PIXEL']
+    im.pixeldq[:, :4] = REFERENCE_PIXEL
+    im.pixeldq[:, 1028:] = REFERENCE_PIXEL
 
     # run the step
     out = RefPixStep.call(im)
@@ -272,8 +281,8 @@ def test_above_sigma():
     im.data[0, 3, 50, 3] = 35.0
 
     # set reference pixels to 'REFERENCE_PIXEL'
-    im.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
-    im.pixeldq[:, 1028:] = dqflags.pixel['REFERENCE_PIXEL']
+    im.pixeldq[:, :4] = REFERENCE_PIXEL
+    im.pixeldq[:, 1028:] = REFERENCE_PIXEL
 
     # run the step
     out = RefPixStep.call(im)
@@ -306,9 +315,9 @@ def test_nan_refpix():
     im.data[0, 3, 50, 3] = np.nan
 
     # set reference pixels to 'REFERENCE_PIXEL'
-    im.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
-    im.pixeldq[:, 1028:] = dqflags.pixel['REFERENCE_PIXEL']
-    im.pixeldq[50, 3] = dqflags.pixel['DO_NOT_USE']
+    im.pixeldq[:, :4] = REFERENCE_PIXEL
+    im.pixeldq[:, 1028:] = REFERENCE_PIXEL
+    im.pixeldq[50, 3] = DO_NOT_USE
 
     # run the step
     out = RefPixStep.call(im)
@@ -342,8 +351,8 @@ def test_do_corrections_subarray_no_oddEven(setup_subarray_cube):
     input_model.data[0, 0, :, :] = dataval
     input_model.data[0, 0, :4, :] = bottom_rpix
     input_model.data[0, 0, :, :4] = left_rpix
-    input_model.pixeldq[:4, :] = dqflags.pixel['REFERENCE_PIXEL']
-    input_model.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
+    input_model.pixeldq[:4, :] = REFERENCE_PIXEL
+    input_model.pixeldq[:, :4] = REFERENCE_PIXEL
 
     init_dataset = create_dataset(input_model,
                                   odd_even_columns,
@@ -384,8 +393,8 @@ def test_do_corrections_subarray(setup_subarray_cube):
     input_model.data[0, 0, :, :] = dataval
     input_model.data[0, 0, :4, :] = bottom_rpix
     input_model.data[0, 0, :, :4] = left_rpix
-    input_model.pixeldq[:4, :] = dqflags.pixel['REFERENCE_PIXEL']
-    input_model.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
+    input_model.pixeldq[:4, :] = REFERENCE_PIXEL
+    input_model.pixeldq[:, :4] = REFERENCE_PIXEL
 
     init_dataset = create_dataset(input_model,
                                   odd_even_columns,
@@ -454,9 +463,9 @@ def test_do_corrections_subarray_4amp(setup_subarray_cube):
     input_model.data[0, 0, :, 1:4:2] = left_rpix + bottom_rpix_a_even
     input_model.data[0, 0, :, -4::2] = right_rpix + bottom_rpix_d_odd
     input_model.data[0, 0, :, -3::2] = right_rpix + bottom_rpix_d_even
-    input_model.pixeldq[:4, :] = dqflags.pixel['REFERENCE_PIXEL']
-    input_model.pixeldq[:, :4] = dqflags.pixel['REFERENCE_PIXEL']
-    input_model.pixeldq[:, -4:] = dqflags.pixel['REFERENCE_PIXEL']
+    input_model.pixeldq[:4, :] = REFERENCE_PIXEL
+    input_model.pixeldq[:, :4] = REFERENCE_PIXEL
+    input_model.pixeldq[:, -4:] = REFERENCE_PIXEL
 
     init_dataset = create_dataset(input_model,
                                   odd_even_columns,
@@ -753,6 +762,12 @@ def test_correct_model(setup_cube, instr, det):
     input_model.data[0, 0, :, :] = rpix
     input_model.data[0, 0, 4:-4, 4:-4] = dataval
 
+    # Populate DQ array with REFERENCE_PIXEL where appropriate
+    input_model.pixeldq[:4,:] = REFERENCE_PIXEL
+    input_model.pixeldq[-4:,:] = REFERENCE_PIXEL
+    input_model.pixeldq[:,:4] = REFERENCE_PIXEL
+    input_model.pixeldq[:,-4:] = REFERENCE_PIXEL
+
     correct_model(input_model,
                   odd_even_columns,
                   use_side_ref_pixels,
@@ -762,6 +777,11 @@ def test_correct_model(setup_cube, instr, det):
 
     np.testing.assert_almost_equal(np.mean(input_model.data[0, 0, :4, 4:-4]), 0, decimal=0)
     np.testing.assert_almost_equal(np.mean(input_model.data[0, 0, 4:-4, 4:-4]), dataval - rpix, decimal=0)
+
+    # Make sure reference pixel DQs are set to DO_NOT_USE
+    mask1 = input_model.pixeldq & REFERENCE_PIXEL == REFERENCE_PIXEL
+    mask2 = input_model.pixeldq & DO_NOT_USE == DO_NOT_USE
+    np.testing.assert_array_equal(mask1, mask1 & mask2)
 
 
 def test_zero_frame(setup_cube):
