@@ -1,7 +1,12 @@
 1.14.1 (unreleased)
 ===================
 
-- 
+resample
+--------
+
+- Apply a median filter to IVM weight array to better handle saturated
+  pixels. [#7563]
+
 
 1.14.0 (2024-03-29)
 ===================
@@ -17,7 +22,7 @@ ami
 - Additional optional input arguments for greater user processing flexibility.
   See documentation for details. [#7862]
 
-- Bad pixel correction applied to data using new NRM reference file to calculate 
+- Bad pixel correction applied to data using new NRM reference file to calculate
   complex visibility support (M. Ireland method implemented by J. Kammerer). [#7862]
 
 - Make ``AmiAnalyze`` and ``AmiNormalize`` output conform to the OIFITS standard. [#7862]
@@ -53,7 +58,7 @@ charge_migration
   as DO_NOT_USE.  This group, and all subsequent groups, are then flagged as
   CHARGELOSS and DO_NOT_USE.  The four nearest pixel neighbor are then flagged
   in the same group. [#8336]
-  
+
 - Added warning handler for expected NaN and inf clipping in the
   ``sigma_clip`` function. [#8320]
 
@@ -340,7 +345,7 @@ tweakreg
 
 - Fixed a bug that caused failures instead of warnings when no GAIA sources
   were found within the bounding box of the input image. [#8334]
-  
+
 - Suppress AstropyUserWarnings regarding NaNs in the input data. [#8320]
 
 wfs_combine
@@ -903,6 +908,7 @@ resample
 - Update the following exposure time keywords: XPOSURE (EFFEXPTM),
   DURATION and TELAPSE. [#7793]
 
+
 residual_fringe
 ---------------
 
@@ -1201,6 +1207,10 @@ tweakreg
 
 - Added the 'GAIADR3' catalog to the available options for alignment;
   this has been enabled as the default option [#7611].
+
+- Apply median filtering to IVM weight array to better handle saturated
+  pixels. Added option of 'ivm-med', 'ivm-smed' (recommended default) to the
+  ``weight_type`` argument of ``ResampleStep``. [#7563]
 
 
 1.10.2 (2023-04-14)
