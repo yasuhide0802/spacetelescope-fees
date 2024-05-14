@@ -7,6 +7,11 @@ cube_build
 - Removed direct setting of the ``self.skip`` attribute from within the step
   itself. [#8600]
 
+general
+-------
+
+- Renamed to default development branch to ``main``. [#8210]
+
 master_background
 -----------------
 
