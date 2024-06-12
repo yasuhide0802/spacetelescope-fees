@@ -54,7 +54,6 @@ def test_niriss_tweakreg_no_sources(rtdata, fitsdiff_default_kwargs):
     rtdata.input = "niriss/imaging/jw01537-o003_20240406t164421_image3_00004_asn.json"
     rtdata.get_asn("niriss/imaging/jw01537-o003_20240406t164421_image3_00004_asn.json")
 
-<<<<<<< HEAD
     args = [
         "jwst.tweakreg.TweakRegStep",
         rtdata.input,
@@ -64,12 +63,6 @@ def test_niriss_tweakreg_no_sources(rtdata, fitsdiff_default_kwargs):
 
     # run the test from the command line:
     result = Step.from_cmdline(args)
-=======
-    args = ["jwst.tweakreg.TweakRegStep", rtdata.input, "--abs_refcat='GAIADR3'"]
-    result = Step.from_cmdline(args)
-    # Check that the step is skipped
-    assert result.skip
->>>>>>> edae07e81 (fix assert statement; run the test with abs_refcat GAIADR3)
 
     # Check the status of the step is set correctly in the files.
     mc = datamodels.ModelContainer(rtdata.input)
