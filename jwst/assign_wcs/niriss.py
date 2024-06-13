@@ -16,7 +16,7 @@ from stdatamodels.jwst.transforms.models import (NirissSOSSModel,
 
 from .util import (not_implemented_mode, subarray_transform,
                    velocity_correction, bounding_box_from_subarray,
-                   transform_bbox_from_shape)
+                   transform_bbox_from_shape, wl_order_identity)
 from . import pointing
 from ..lib.reffile_utils import find_row
 
@@ -312,6 +312,10 @@ def imaging_distortion(input_model, reference_files):
         distortion.bounding_box = transform_bbox_from_shape(input_model.data.shape)
     else:
         distortion.bounding_box = bbox
+
+    distortion.inputs = ('x_direct', 'y_direct')
+    distortion.outputs = ('v2', 'v3')
+    distortion.name = "imaging_distortion"
     return distortion
 
 
@@ -446,6 +450,9 @@ def wfss(input_model, reference_files):
         velocity_corr = velocity_correction(input_model.meta.wcsinfo.velosys)
         log.info("Added Barycentric velocity correction: {}".format(velocity_corr[1].amplitude.value))
         det2det = det2det | Mapping((0, 1, 2, 3)) | Identity(2) & velocity_corr & Identity(1)
+    det2det.name = "grism_dispersion"
+    det2det.inputs = ('x_grism', 'y_grism', 'x0', 'y0', 'order')
+    det2det.outputs = ('x_direct', 'y_direct', 'wavelength', 'order')
 
     # create the pipeline to construct a WCS object for the whole image
     # which can translate ra,dec to image frame reference pixels
@@ -471,7 +478,7 @@ def wfss(input_model, reference_files):
     world = image_pipeline.pop()[0]
     world.name = 'sky'
     for cframe, trans in image_pipeline:
-        trans = trans & (Identity(2))
+        trans = trans & (wl_order_identity())
         name = cframe.name
         cframe.name = name + 'spatial'
         spatial_and_spectral = cf.CompositeFrame([cframe, spec], name=name)

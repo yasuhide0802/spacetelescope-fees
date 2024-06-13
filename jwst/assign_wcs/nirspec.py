@@ -27,7 +27,8 @@ from .util import (
     MSAFileError,
     NoDataOnDetectorError,
     not_implemented_mode,
-    velocity_correction
+    velocity_correction,
+    wl_identity
 )
 from . import pointing
 from ..lib.exposure_types import is_nrs_ifu_lamp
@@ -108,6 +109,9 @@ def imaging(input_model, reference_files):
     lam_model = Mapping((0, 1, 1)) | Identity(2) & Const1D(lam)
 
     gwa2msa = gwa_through | rotation | dircos2unitless | col | lam_model
+    gwa2msa.name = "gwa_to_msa"
+    gwa2msa.inputs = ('alpha', 'beta', 'gamma')
+    gwa2msa.outputs = ('x_msa', 'y_msa', 'lam')
     gwa2msa.inverse = col.inverse | dircos2unitless.inverse | rotation.inverse | gwa_through
 
     # Create coordinate frames in the NIRSPEC WCS pipeline
@@ -117,6 +121,9 @@ def imaging(input_model, reference_files):
         # MSA to OTEIP transform
         msa2ote = msa_to_oteip(reference_files)
         msa2oteip = msa2ote | Mapping((0, 1), n_inputs=3)
+        msa2oteip.name = "msa_to_oteip"
+        msa2oteip.inputs = ('x_msa', 'y_msa', 'lam')
+        msa2oteip.outputs = ('xan', 'yan')
         map1 = Mapping((0, 1, 0, 1))
         minv = msa2ote.inverse
         del minv.inverse
@@ -125,6 +132,9 @@ def imaging(input_model, reference_files):
         # OTEIP to V2,V3 transform
         with OTEModel(reference_files['ote']) as f:
             oteip2v23 = f.model
+        oteip2v23.name = "oteip_to_v2v3"
+        oteip2v23.inputs = ('xan', 'yan')
+        oteip2v23.outputs = ('v2', 'v3')
 
         # Compute differential velocity aberration (DVA) correction:
         va_corr = pointing.dva_corr_model(
@@ -153,6 +163,15 @@ def imaging(input_model, reference_files):
                             (msa_frame, None)]
 
     return imaging_pipeline
+
+
+def null_identity(n):
+    '''Make placeholder Identity transform to pass in two new empty dimesnsions'''
+    transform = Identity(n)
+    transform.name = "null_identity"
+    transform.inputs = ('null',)*n
+    transform.outputs = ('null',)*n
+    return transform
 
 
 def ifu(input_model, reference_files, slit_y_range=[-.55, .55]):
@@ -213,7 +232,8 @@ def ifu(input_model, reference_files, slit_y_range=[-.55, .55]):
     # DMS to SCA transform
     dms2detector = dms_to_sca(input_model)
     # DETECTOR to GWA transform
-    det2gwa = Identity(2) & detector_to_gwa(reference_files,
+
+    det2gwa = null_identity(2) & detector_to_gwa(reference_files,
                                             input_model.meta.instrument.detector,
                                             disperser)
 
@@ -221,7 +241,7 @@ def ifu(input_model, reference_files, slit_y_range=[-.55, .55]):
     gwa2slit = gwa_to_ifuslit(slits, input_model, disperser, reference_files, slit_y_range)
 
     # SLIT to MSA transform
-    slit2slicer = ifuslit_to_slicer(slits, reference_files, input_model)
+    slit2slicer = ifuslit_to_slicer(slits, reference_files)
 
     # SLICER to MSA Entrance
     slicer2msa = slicer_to_msa(reference_files)
@@ -235,8 +255,8 @@ def ifu(input_model, reference_files, slit_y_range=[-.55, .55]):
     if input_model.meta.instrument.filter == 'OPAQUE' or is_lamp_exposure:
         # If filter is "OPAQUE" or if internal lamp exposure the NIRSPEC WCS pipeline stops at the MSA.
         pipeline = [(det, dms2detector),
-                    (sca, det2gwa.rename('detector2gwa')),
-                    (gwa, gwa2slit.rename('gwa2slit')),
+                    (sca, det2gwa),
+                    (gwa, gwa2slit),
                     (slit_frame, slit2slicer),
                     ('slicer', slicer2msa),
                     (msa_frame, None)]
@@ -252,10 +272,10 @@ def ifu(input_model, reference_files, slit_y_range=[-.55, .55]):
             va_scale=input_model.meta.velocity_aberration.scale_factor,
             v2_ref=input_model.meta.wcsinfo.v2_ref,
             v3_ref=input_model.meta.wcsinfo.v3_ref
-        ) & Identity(1)
+        ) & wl_identity()
 
         # V2, V3 to sky
-        tel2sky = pointing.v23tosky(input_model) & Identity(1)
+        tel2sky = pointing.v23tosky(input_model) & wl_identity()
 
         # Create coordinate frames in the NIRSPEC WCS pipeline"
         #
@@ -265,12 +285,12 @@ def ifu(input_model, reference_files, slit_y_range=[-.55, .55]):
         # "detector", "gwa", "slit_frame", "msa_frame", "oteip", "v2v3", "world"
 
         pipeline = [(det, dms2detector),
-                    (sca, det2gwa.rename('detector2gwa')),
-                    (gwa, gwa2slit.rename('gwa2slit')),
+                    (sca, det2gwa),
+                    (gwa, gwa2slit),
                     (slit_frame, slit2slicer),
                     ('slicer', slicer2msa),
-                    (msa_frame, msa2oteip.rename('msa2oteip')),
-                    (oteip, oteip2v23.rename('oteip2v23')),
+                    (msa_frame, msa2oteip),
+                    (oteip, oteip2v23),
                     (v2v3, va_corr),
                     (v2v3vacorr, tel2sky),
                     (world, None)]
@@ -332,20 +352,17 @@ def slitlets_wcs(input_model, reference_files, open_slits_id):
 
     # DMS to SCA transform
     dms2detector = dms_to_sca(input_model)
-    dms2detector.name = 'dms2sca'
+
     # DETECTOR to GWA transform
-    det2gwa = Identity(2) & detector_to_gwa(reference_files,
+    det2gwa = null_identity(2) & detector_to_gwa(reference_files,
                                             input_model.meta.instrument.detector,
                                             disperser)
-    det2gwa.name = "det2gwa"
 
     # GWA to SLIT
     gwa2slit = gwa_to_slit(open_slits_id, input_model, disperser, reference_files)
-    gwa2slit.name = "gwa2slit"
 
     # SLIT to MSA transform
     slit2msa = slit_to_msa(open_slits_id, reference_files['msa'])
-    slit2msa.name = "slit2msa"
 
     # Create coordinate frames in the NIRSPEC WCS pipeline"
     # "detector", "gwa", "slit_frame", "msa_frame", "oteip", "v2v3", "v2v3vacorr", "world"
@@ -370,17 +387,16 @@ def slitlets_wcs(input_model, reference_files, open_slits_id):
         # OTEIP to V2,V3 transform
         # This includes a wavelength unit conversion from meters to microns.
         oteip2v23 = oteip_to_v23(reference_files, input_model)
-        oteip2v23.name = "oteip2v23"
 
         # Compute differential velocity aberration (DVA) correction:
         va_corr = pointing.dva_corr_model(
             va_scale=input_model.meta.velocity_aberration.scale_factor,
             v2_ref=input_model.meta.wcsinfo.v2_ref,
             v3_ref=input_model.meta.wcsinfo.v3_ref
-        ) & Identity(1)
+        ) & wl_identity()
 
         # V2, V3 to sky
-        tel2sky = pointing.v23tosky(input_model) & Identity(1)
+        tel2sky = pointing.v23tosky(input_model) & wl_identity()
         tel2sky.name = "v2v3_to_sky"
 
         msa_pipeline = [(det, dms2detector),
@@ -797,7 +813,7 @@ def get_spectral_order_wrange(input_model, wavelengthrange_file):
     return order, wrange
 
 
-def ifuslit_to_slicer(slits, reference_files, input_model):
+def ifuslit_to_slicer(slits, reference_files):
     """
     The transform from ``slit_frame`` to ``slicer`` frame.
 
@@ -807,7 +823,6 @@ def ifuslit_to_slicer(slits, reference_files, input_model):
         A list of slit IDs for all slices.
     reference_files : dict
         {reference_type: reference_file_name}
-    input_model : `~jwst.datamodels.IFUImageModel`
 
     Returns
     -------
@@ -820,13 +835,16 @@ def ifuslit_to_slicer(slits, reference_files, input_model):
     for slit in slits:
         slitdata = ifuslicer.data[slit]
         slitdata_model = (get_slit_location_model(slitdata)).rename('slitdata_model')
-        slicer_model = slitdata_model | ifuslicer_model
-
-        msa_transform = slicer_model
+        msa_transform = slitdata_model | ifuslicer_model
+        msa_transform.name = "ifuslit_to_slicer"
+        msa_transform.inputs = ('x_slit', 'y_slit')
+        msa_transform.outputs = ('x_msa', 'y_msa')
         models.append(msa_transform)
     ifuslicer.close()
 
-    return Slit2Msa(slits, models)
+    transform = Slit2Msa(slits, models)
+    transform.name = "ifuslit_to_slicer"
+    return transform
 
 
 def slicer_to_msa(reference_files):
@@ -843,6 +861,9 @@ def slicer_to_msa(reference_files):
     ifufore2fore_mapping = Identity(1)
     ifufore2fore_mapping.inverse = Mapping((0, 1, 2, 2))
     ifu_fore_transform = slicer2fore_mapping | ifufore & Identity(1)
+    ifu_fore_transform.name = "slicer_to_msa"
+    ifu_fore_transform.inputs = ('x_msa', 'y_msa', 'lam')
+    ifu_fore_transform.outputs = ('x_msa', 'y_msa', 'lam')
     return ifu_fore_transform
 
 
@@ -880,10 +901,14 @@ def slit_to_msa(open_slits, msafile):
                 slitdata = msa_data[slit_id]
                 slitdata_model = get_slit_location_model(slitdata)
                 msa_transform = slitdata_model | msa_model
+                msa_transform.name = "slit_to_msa"
+                msa_transform.inputs = ('x_slit', 'y_slit')
+                msa_transform.outputs = ('x_msa', 'y_msa')
                 models.append(msa_transform)
                 slits.append(slit)
     msa.close()
-    return Slit2Msa(slits, models)
+    transform = Slit2Msa(slits, models)
+    return transform
 
 
 def gwa_to_ifuslit(slits, input_model, disperser, reference_files, slit_y_range):
@@ -970,14 +995,21 @@ def gwa_to_ifuslit(slits, input_model, disperser, reference_files, slit_y_range)
         )
 
         # transform from ``msa_frame`` to ``gwa`` frame (before the GWA going from detector to sky).
-        msa2gwa_out = ifuslicer_transform & Identity(1) | ifupost_transform | collimator2gwa
+        msa2gwa_out = ifuslicer_transform & wl_identity() | ifupost_transform | collimator2gwa
         msa2bgwa = Mapping((0, 1, 2, 2)) | msa2gwa_out & Identity(1) | Mapping((3, 0, 1, 2)) | agreq
         bgwa2msa.inverse = msa2bgwa
+        bgwa2msa.name = "gwa_to_ifuslit"
+        bgwa2msa.inputs = ('alpha', 'beta', 'gamma')
+        bgwa2msa.outputs = ('x_slit', 'y_slit', 'lam')
         slit_models.append(bgwa2msa)
 
     ifuslicer.close()
     ifupost.close()
-    return Gwa2Slit(slits, slit_models)
+    transform = Gwa2Slit(slits, slit_models)
+    transform.name = "gwa_to_ifuslit"
+    transform.inputs = ('name', 'alpha', 'beta', 'gamma')
+    #transform.outputs = ('x_slit', 'y_slit', 'lam')
+    return transform
 
 
 def gwa_to_slit(open_slits, input_model, disperser,
@@ -1059,10 +1091,15 @@ def gwa_to_slit(open_slits, input_model, disperser,
                 # msa to before_gwa
                 msa2bgwa = msa2gwa & Identity(1) | Mapping((3, 0, 1, 2)) | agreq
                 bgwa2msa.inverse = msa2bgwa
+                bgwa2msa.name = "gwa_to_slit"
+                bgwa2msa.inputs = ('alpha', 'beta', 'gamma')
+                bgwa2msa.outputs = ('x_slit', 'y_slit', 'lam')
                 slit_models.append(bgwa2msa)
                 slits.append(slit)
     msa.close()
-    return Gwa2Slit(slits, slit_models)
+    transform = Gwa2Slit(slits, slit_models)
+    transform.inputs = ('name', 'alpha', 'beta', 'gamma')
+    return transform
 
 
 def angle_from_disperser(disperser, input_model):
@@ -1174,6 +1211,9 @@ def detector_to_gwa(reference_files, detector, disperser):
             models.Shift(-1) & models.Shift(-1) | fpa | camera | u2dircos | rotation
     '''
     model = fpa | camera | u2dircos | rotation
+    model.name = 'sca_to_gwa'
+    model.inputs = ('x_sca', 'y_sca')
+    model.outputs = ('alpha', 'beta', 'gamma')
     return model
 
 
@@ -1198,7 +1238,11 @@ def dms_to_sca(input_model):
         model = models.Shift(-2047) & models.Shift(-2047) | models.Scale(-1) & models.Scale(-1)
     elif detector == 'NRS1':
         model = models.Identity(2)
-    return subarray2full | model
+    dms2sca = subarray2full | model
+    dms2sca.inputs = ('x_detector', 'y_detector')
+    dms2sca.outputs = ('x_sca', 'y_sca')
+    dms2sca.name = 'dms_to_sca'
+    return dms2sca
 
 
 def mask_slit(ymin=-.55, ymax=.55):
@@ -1421,7 +1465,10 @@ def ifu_msa_to_oteip(reference_files):
 
     msa2fore_mapping = Mapping((0, 1, 2, 2), name='msa2fore_mapping')
     msa2fore_mapping.inverse = Mapping((0, 1, 2, 2), name='fore2msa')
-    fore_transform = msa2fore_mapping | fore & Identity(1)
+    fore_transform = msa2fore_mapping | fore & wl_identity()
+    fore_transform.name = "msa_to_oteip"
+    fore_transform.inputs = ('x_msa', 'y_msa', 'lam')
+    fore_transform.outputs = ('xan', 'yan', 'lam')
     return fore_transform
 
 
@@ -1444,7 +1491,11 @@ def msa_to_oteip(reference_files):
         fore = f.model
     msa2fore_mapping = Mapping((0, 1, 2, 2), name='msa2fore_mapping')
     msa2fore_mapping.inverse = Identity(3)
-    return msa2fore_mapping | (fore & Identity(1))
+    transform = msa2fore_mapping | (fore & wl_identity())
+    transform.name = "msa_to_oteip"
+    transform.inputs = ('x_msa', 'y_msa', 'lam')
+    transform.outputs = ('xan', 'yan', 'lam')
+    return transform
 
 
 def oteip_to_v23(reference_files, input_model):
@@ -1473,6 +1524,9 @@ def oteip_to_v23(reference_files, input_model):
     # The spatial units are currently in deg. Convertin to arcsec.
     oteip2v23 = fore2ote_mapping | (ote & Scale(1e6))
 
+    oteip2v23.name = "oteip_to_v2v3"
+    oteip2v23.inputs = ('xan', 'yan', 'lam')
+    oteip2v23.outputs = ('v2', 'v3', 'lam')
     return oteip2v23
 
 

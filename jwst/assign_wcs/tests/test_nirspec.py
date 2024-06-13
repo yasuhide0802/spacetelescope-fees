@@ -6,6 +6,7 @@ from math import cos, sin
 import os.path
 import shutil
 
+import asdf
 import pytest
 import numpy as np
 from numpy.testing import assert_allclose
@@ -163,6 +164,25 @@ def test_nirspec_imaging():
     im.meta.wcs = w
     # Test evaluating the WCS
     im.meta.wcs(1, 2)
+
+    # ensure transform metadata looks correct
+    # available frames ['detector', 'sca', 'gwa', 'msa', 'oteip', 'v2v3', 'v2v3vacorr', 'world']
+    # see technical report JWST-STScI-005921, SM-12 for details
+    assert w.get_transform('detector', 'sca').inputs == ('x_detector', 'y_detector')
+    assert w.get_transform('detector', 'sca').outputs == ('x_sca', 'y_sca')
+    assert w.get_transform('sca', 'gwa').inputs == ('x_sca', 'y_sca')
+    assert w.get_transform('sca', 'gwa').outputs == ('alpha', 'beta', 'gamma')
+    assert w.get_transform('gwa', 'msa').inputs == ('alpha', 'beta', 'gamma')
+    assert w.get_transform('gwa', 'msa').outputs == ('x_msa', 'y_msa', 'lam')
+    assert w.get_transform('msa', 'oteip').inputs == ('x_msa', 'y_msa', 'lam')
+    assert w.get_transform('msa', 'oteip').outputs == ('xan', 'yan')
+    assert w.get_transform('oteip', 'v2v3').inputs == ('xan', 'yan')
+    assert w.get_transform('oteip', 'v2v3').outputs == ("v2", "v3")
+    assert w.get_transform('v2v3', 'v2v3vacorr').inputs == ("v2", "v3")
+    assert w.get_transform('v2v3', 'v2v3vacorr').outputs == ("v2", "v3")
+    assert w.get_transform('v2v3vacorr', 'world').inputs == ("v2", "v3")
+    assert w.get_transform('v2v3vacorr', 'world').outputs == ("ra", "dec")
+
 
 
 def test_nirspec_ifu_against_esa(wcs_ifu_grating):
@@ -522,6 +542,24 @@ def test_functional_fs_msa(mode):
         im.meta.wcs = w
         slit_wcs = nirspec.nrs_wcs_set_input(im, 1)
 
+        # add metadata tests for msa, which cover fs too because both call slitlets_wcs
+        assert w.get_transform('detector', 'sca').inputs == ('x_detector', 'y_detector')
+        assert w.get_transform('detector', 'sca').outputs == ('x_sca', 'y_sca')
+        assert w.get_transform('sca', 'gwa').inputs == ("null", "null", 'x_sca', 'y_sca')
+        assert w.get_transform('sca', 'gwa').outputs == ("null", "null", 'alpha', 'beta', 'gamma')
+        assert w.get_transform('gwa', 'slit_frame').inputs == ('name', 'alpha', 'beta', 'gamma')
+        assert w.get_transform('gwa', 'slit_frame').outputs == ('name', 'x_slit', 'y_slit', 'lam')
+        assert w.get_transform('slit_frame', 'msa_frame').inputs == ('name', 'x_slit', 'y_slit')
+        assert w.get_transform('slit_frame', 'msa_frame').outputs == ('x_msa', 'y_msa')
+        assert w.get_transform('msa_frame', 'oteip').inputs == ('x_msa', 'y_msa', 'lam')
+        assert w.get_transform('msa_frame', 'oteip').outputs == ('xan', 'yan', 'lam')
+        assert w.get_transform('oteip', 'v2v3').inputs == ('xan', 'yan', 'lam')
+        assert w.get_transform('oteip', 'v2v3').outputs == ("v2", "v3", 'lam')
+        assert w.get_transform('v2v3', 'v2v3vacorr').inputs == ("v2", "v3", 'lam')
+        assert w.get_transform('v2v3', 'v2v3vacorr').outputs == ("v2", "v3", 'lam')
+        assert w.get_transform('v2v3vacorr', 'world').inputs == ("v2", "v3", 'lam')
+        assert w.get_transform('v2v3vacorr', 'world').outputs == ("ra", "dec", 'lam')
+
     ins_file = get_file_path(model_file)
     ins_tab = table.Table.read(ins_file, format='ascii')
 
@@ -785,7 +823,7 @@ def test_functional_ifu_grating(wcs_ifu_grating):
     assert_allclose(v3, ins_tab['yV2V3'])
 
 
-def test_functional_ifu_prism():
+def test_functional_ifu_prism(tmp_cwd):
     """Compare Nirspec instrument model with IDT model for IFU prism."""
     # setup test
     model_file = 'ifu_prism_functional_ESA_v1_20180619.txt'
@@ -898,6 +936,42 @@ def test_functional_ifu_prism():
     v3 /= 3600
     assert_allclose(v2, ins_tab['xV2V3'])
     assert_allclose(v3, ins_tab['yV2V3'])
+
+    # test transform metadata for wcs
+    # available frames ['detector', 'sca', 'gwa', 'slit_frame', 'slicer', 'msa_frame', 'oteip', 'v2v3', 'v2v3vacorr', 'world']
+    # read-only - must extract single slit id to execute the wcs
+    assert w.get_transform('detector', 'sca').inputs == ('x_detector', 'y_detector')
+    assert w.get_transform('detector', 'sca').outputs == ('x_sca', 'y_sca')
+    assert w.get_transform('sca', 'gwa').inputs == ('null', 'null', 'x_sca', 'y_sca')
+    assert w.get_transform('sca', 'gwa').outputs == ('null', 'null', 'alpha', 'beta', 'gamma')
+    assert w.get_transform('gwa', 'slit_frame').inputs == ('name', 'alpha', 'beta', 'gamma')
+    assert w.get_transform('gwa', 'slit_frame').outputs == ('name', 'x_slit', 'y_slit', 'lam')
+    assert w.get_transform('slit_frame', 'slicer').inputs == ('name', 'x_slit', 'y_slit')
+    assert w.get_transform('slit_frame', 'slicer').outputs == ('x_msa', 'y_msa')
+    assert w.get_transform('slicer', 'msa_frame').inputs == ('x_msa', 'y_msa', 'lam')
+    assert w.get_transform('slicer', 'msa_frame').outputs == ('x_msa', 'y_msa', 'lam')
+    assert w.get_transform('msa_frame', 'oteip').inputs == ('x_msa', 'y_msa', 'lam')
+    assert w.get_transform('msa_frame', 'oteip').outputs == ('xan', 'yan', 'lam')
+    assert w.get_transform('oteip', 'v2v3').inputs == ('xan', 'yan', 'lam')
+    assert w.get_transform('oteip', 'v2v3').outputs == ("v2", "v3", 'lam')
+    assert w.get_transform('v2v3', 'v2v3vacorr').inputs == ("v2", "v3", 'lam')
+    assert w.get_transform('v2v3', 'v2v3vacorr').outputs == ("v2", "v3", 'lam')
+    assert w.get_transform('v2v3vacorr', 'world').inputs == ("v2", "v3", 'lam')
+    assert w.get_transform('v2v3vacorr', 'world').outputs == ("ra", "dec", 'lam')
+
+
+    # test these can be serialized and that names are restored when this is done
+    outfile = 'w_asdf.asdf'
+    tree = {"wcs": w}
+    af = asdf.AsdfFile(tree)
+    af.write_to(outfile)
+    with asdf.open(outfile) as af:
+        w = af.tree['wcs']
+        print(w)
+        assert True
+        assert w.get_transform('detector', 'sca').inputs == ('x_detector', 'y_detector')
+        assert w.get_transform('detector', 'sca').outputs == ('x_sca', 'y_sca')
+        assert w.get_transform('detector', 'sca').name == "dms_to_sca"
 
 
 def test_ifu_bbox():
