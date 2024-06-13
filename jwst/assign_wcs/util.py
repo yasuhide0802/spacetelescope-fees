@@ -74,30 +74,30 @@ def _domain_to_bounding_box(domain):
     return bb
 
 
-def reproject(wcs1, wcs2):
-    """
-    Given two WCSs return a function which takes pixel coordinates in
-    the first WCS and computes their location in the second one.
+# def reproject(wcs1, wcs2):
+#     """
+#     Given two WCSs return a function which takes pixel coordinates in
+#     the first WCS and computes their location in the second one.
 
-    It performs the forward transformation of ``wcs1`` followed by the
-    inverse of ``wcs2``.
+#     It performs the forward transformation of ``wcs1`` followed by the
+#     inverse of ``wcs2``.
 
-    Parameters
-    ----------
-    wcs1, wcs2 : `~gwcs.wcs.WCS`
-        WCS objects.
+#     Parameters
+#     ----------
+#     wcs1, wcs2 : `~gwcs.wcs.WCS`
+#         WCS objects.
 
-    Returns
-    -------
-    _reproject : func
-        Function to compute the transformations.  It takes x, y
-        positions in ``wcs1`` and returns x, y positions in ``wcs2``.
-    """
+#     Returns
+#     -------
+#     _reproject : func
+#         Function to compute the transformations.  It takes x, y
+#         positions in ``wcs1`` and returns x, y positions in ``wcs2``.
+#     """
 
-    def _reproject(x, y):
-        sky = wcs1.forward_transform(x, y)
-        return wcs2.backward_transform(*sky)
-    return _reproject
+#     def _reproject(x, y):
+#         sky = wcs1.forward_transform(x, y)
+#         return wcs2.backward_transform(*sky)
+#     return _reproject
 
 
 def compute_scale(wcs: WCS, fiducial: Union[tuple, np.ndarray],
@@ -129,7 +129,7 @@ def compute_scale(wcs: WCS, fiducial: Union[tuple, np.ndarray],
     if spectral and disp_axis is None:
         raise ValueError('If input WCS is spectral, a disp_axis must be given')
 
-    crpix = np.array(wcs.invert(*fiducial))
+    crpix = np.array(wcs.invert(*fiducial, with_bounding_box=False))
 
     delta = np.zeros_like(crpix)
     spatial_idx = np.where(np.array(wcs.output_frame.axes_type) == 'SPATIAL')[0]
