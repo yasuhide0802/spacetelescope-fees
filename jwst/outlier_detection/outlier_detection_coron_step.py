@@ -35,7 +35,7 @@ class OutlierDetectionCoronStep(Step, OutlierDetectionStepBase):
 
     """
 
-    class_alias = "outlier_detection"
+    class_alias = "outlier_detection_coron"
 
     spec = """
         maskpt = float(default=0.7)

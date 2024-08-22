@@ -13,7 +13,7 @@ from ..model_blender import blendmeta
 from ..coron import stack_refs_step
 from ..coron import align_refs_step
 from ..coron import klip_step
-from ..outlier_detection import outlier_detection_step
+from ..outlier_detection import outlier_detection_coron_step
 from ..resample import resample_step
 
 __all__ = ['Coron3Pipeline']
@@ -67,7 +67,7 @@ class Coron3Pipeline(Pipeline):
         'stack_refs': stack_refs_step.StackRefsStep,
         'align_refs': align_refs_step.AlignRefsStep,
         'klip': klip_step.KlipStep,
-        'outlier_detection': outlier_detection_step.OutlierDetectionStep,
+        'outlier_detection': outlier_detection_coron_step.OutlierDetectionCoronStep,
         'resample': resample_step.ResampleStep
     }
 
@@ -104,7 +104,6 @@ class Coron3Pipeline(Pipeline):
 
         # Set up required output products and formats
         self.outlier_detection.suffix = 'crfints'
-        self.outlier_detection.mode = 'coron'
         self.outlier_detection.save_results = self.save_results
         self.resample.blendheaders = False
 

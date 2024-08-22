@@ -9,7 +9,7 @@ from ..assign_mtwcs import assign_mtwcs_step
 from ..tweakreg import tweakreg_step
 from ..skymatch import skymatch_step
 from ..resample import resample_step
-from ..outlier_detection import outlier_detection_step
+from ..outlier_detection import outlier_detection_imaging_step
 from ..source_catalog import source_catalog_step
 
 __all__ = ['Image3Pipeline']
@@ -39,7 +39,7 @@ class Image3Pipeline(Pipeline):
         'assign_mtwcs': assign_mtwcs_step.AssignMTWcsStep,
         'tweakreg': tweakreg_step.TweakRegStep,
         'skymatch': skymatch_step.SkyMatchStep,
-        'outlier_detection': outlier_detection_step.OutlierDetectionStep,
+        'outlier_detection': outlier_detection_imaging_step.OutlierDetectionImagingStep,
         'resample': resample_step.ResampleStep,
         'source_catalog': source_catalog_step.SourceCatalogStep
     }
@@ -61,7 +61,6 @@ class Image3Pipeline(Pipeline):
 
         # Configure settings for saving results files
         self.outlier_detection.suffix = 'crf'
-        self.outlier_detection.mode = 'imaging'
         self.outlier_detection.save_results = self.save_results
 
         self.resample.suffix = 'i2d'

@@ -52,7 +52,7 @@ class OutlierDetectionIFUStep(Step, OutlierDetectionStepBase):
     7. Updates input ImageModel DQ arrays with mask of detected outliers.
     """
 
-    class_alias = "outlier_detection"
+    class_alias = "outlier_detection_ifu"
 
     spec = """
         kernel_size = string(default='7 7')

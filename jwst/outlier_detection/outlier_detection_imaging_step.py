@@ -37,7 +37,7 @@ class OutlierDetectionImagingStep(Step, OutlierDetectionStepBase):
 
     """
 
-    class_alias = "outlier_detection"
+    class_alias = "outlier_detection_imaging"
 
     spec = """
         weight_type = option('ivm','exptime',default='ivm')
