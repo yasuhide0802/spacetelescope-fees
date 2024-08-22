@@ -3,15 +3,16 @@
 Outlier Detection Algorithm for Imaging Data
 ============================================
 
-This module serves as the interface for applying ``outlier_detection`` to direct
+:Classes: `jwst.outlier_detection.OutlierDetectionImagingStep`
+:Aliases: outlier_detection_imaging
+
+This module serves as the interface for applying outlier detection to direct
 image observations, like those taken with MIRI, NIRCam and NIRISS.  The code implements the
 basic outlier detection algorithm used with HST data, as adapted to JWST.
 
 Specifically, this routine performs the following operations:
 
 #. Extract parameter settings from input model and merge them with any user-provided values.
-   See :ref:`outlier detection arguments <outlier_detection_step_args>` for the full list
-   of parameters.
 
 #. Convert input data, as needed, to make sure it is in a format that can be processed.
 
@@ -152,12 +153,6 @@ memory usage at the expense of file I/O.  The control over this memory model hap
 with the use of the ``in_memory`` parameter.  The full impact of this parameter
 during processing includes:
 
-#. The ``save_open`` parameter gets set to `False`
-   when opening the input :py:class:`~jwst.datamodels.ModelContainer` object.
-   This forces all input models in the input :py:class:`~jwst.datamodels.ModelContainer` or
-   :py:class:`~jwst.datamodels.CubeModel` to get written out to disk.  The ModelContainer
-   then uses the filename of the input model during subsequent processing.
-
 #. The ``in_memory`` parameter gets passed to the :py:class:`~jwst.resample.ResampleStep`
    to set whether or not to keep the resampled images in memory or not.  By default,
    the outlier detection processing sets this parameter to `False` so that each resampled
@@ -174,34 +169,85 @@ These changes result in a minimum amount of memory usage during processing at th
 expense of reading and writing the products from disk.
 
 
-Outlier Detection for Coronagraphic Data
-----------------------------------------
-Coronagraphic data is processed in a near-identical manner to direct imaging data, but
-no resampling occurs.
+Step Arguments
+==============
+
+``--weight_type``
+  The type of data weighting to use during resampling.
+
+``--pixfrac``
+  The pixel fraction used during resampling;
+  valid values go from 0.0 to 1.0.
+
+``--kernel``
+  The form of the kernel function used to distribute flux onto a
+  resampled image.
+
+``--fillval``
+  The value to assign to resampled image pixels that have zero weight or
+  do not receive any flux from any input pixels during drizzling.
+  Any floating-point value, given as a string, is valid.
+  A value of 'INDEF' will use the last zero weight flux.
+
+``--maskpt``
+  The percent of maximum weight to use as lower-limit for valid data;
+  valid values go from 0.0 to 1.0.
+
+``--snr``
+  The signal-to-noise values to use for bad pixel identification.
+  Since cosmic rays often extend across several pixels the user
+  must specify two cut-off values for determining whether a pixel should
+  be masked: the first for detecting the primary cosmic ray, and the
+  second (typically lower threshold) for masking lower-level bad pixels
+  adjacent to those found in the first pass.  Valid values are a pair of
+  floating-point values in a single string (for example "5.0 4.0").
+
+``--scale``
+  The scaling factor applied to derivative used to identify bad pixels.
+  Since cosmic rays often extend across several pixels the user
+  must specify two cut-off values for determining whether a pixel should
+  be masked: the first for detecting the primary cosmic ray, and the
+  second (typically lower threshold) for masking lower-level bad pixels
+  adjacent to those found in the first pass.  Valid values are a pair of
+  floating-point values in a single string (for example "1.2 0.7").
+
+``--backg``
+  User-specified background value to apply to the median image.
+
+``--save_intermediate_results``
+  Specifies whether or not to save any intermediate products created
+  during step processing.
+
+``--resample_data``
+  Specifies whether or not to resample the input images when
+  performing outlier detection.
+
+``--good_bits``
+  The DQ bit values from the input image DQ arrays
+  that should be considered 'good' when building the weight mask. See
+  DQ flag :ref:`dq_parameter_specification` for details.
+
+``--allowed_memory``
+  Specifies the fractional amount of
+  free memory to allow when creating the resampled image. If ``None``, the
+  environment variable ``DMODEL_ALLOWED_MEMORY`` is used. If not defined, no
+  check is made. If the resampled image would be larger than specified, an
+  ``OutputTooLargeError`` exception will be generated.
+
+  For example, if set to ``0.5``, only resampled images that use less than half
+  the available memory can be created.
+
+``--in_memory``
+  Specifies whether or not to load and create all images that are used during
+  processing into memory. If ``False``, input files are loaded from disk when
+  needed and all intermediate files are stored on disk, rather than in memory.
 
 
-Outlier Detection for TSO data
--------------------------------
-Normal imaging data benefit from combining all integrations into a
-single image. TSO data's value, however, comes from looking for variations from one
-integration to the next.  The outlier detection algorithm, therefore, gets run with 
-a few variations to accomodate the nature of these 3D data. See the 
-:ref:`TSO outlier detection <outlier-detection-tso>` documentation for details.
+Reference Files
+===============
 
+The ``outlier_detection_imaging`` step uses the PARS-OUTLIERDETECTIONIMAGINGSTEP parameter reference file.
 
-Outlier Detection for IFU data
-------------------------------
-Integral Field Unit (IFU) data is handled as 2D images, similar to direct
-imaging modes. The nature of the detection algorithm, however, is quite
-different and involves measuring the differences between neighboring pixels
-in the spatial (cross-dispersion) direction within the IFU slice images.
-See the :ref:`IFU outlier detection <outlier-detection-ifu>` documentation for
-all the details.
+.. include:: ../references_general/pars-outlierdetectionimagingstep_reffile.inc
 
-
-Outlier Detection for Slit data
--------------------------------
-See the :ref:`IFU outlier detection <outlier-detection-spec>` documentation for
-details.
-
-.. automodapi:: jwst.outlier_detection.imaging
+.. automodapi:: jwst.outlier_detection.outlier_detection_imaging_step

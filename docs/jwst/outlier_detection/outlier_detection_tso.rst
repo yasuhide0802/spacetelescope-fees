@@ -3,6 +3,9 @@
 Outlier Detection for TSO Data
 ==============================
 
+:Classes: `jwst.outlier_detection.OutlierDetectionTSOStep`
+:Aliases: outlier_detection_tso
+
 Time-series observations (TSO) result in input data stored as a 3D CubeModel
 where each plane in the cube represents a separate integration without changing the
 pointing.  Normal imaging data benefit from combining all integrations into a
@@ -36,4 +39,37 @@ a few variations to accomodate the nature of these 3D data.
 #. The input data model DQ arrays are updated with the mask of detected outliers.
 
 
-.. automodapi:: jwst.outlier_detection.tso
+
+Step Arguments
+==============
+
+``--maskpt``
+  The percent of maximum weight to use as lower-limit for valid data;
+  valid values go from 0.0 to 1.0.
+
+``--snr``
+  The signal-to-noise values to use for bad pixel identification.
+  Valid values are any positive float.
+
+``--rolling_window_width``
+  Number of integrations over which to take the median when using rolling-window
+  median for TSO observations.
+
+``--save_intermediate_results``
+  Specifies whether or not to save any intermediate products created
+  during step processing.
+
+``--good_bits``
+  The DQ bit values from the input image DQ arrays
+  that should be considered 'good' when building the weight mask. See
+  DQ flag :ref:`dq_parameter_specification` for details.
+
+
+Reference Files
+===============
+
+The ``outlier_detection_tso`` step uses the PARS-OUTLIERDETECTIONTSOSTEP parameter reference file.
+
+.. include:: ../references_general/pars-outlierdetectiontsostep_reffile.inc
+
+.. automodapi:: jwst.outlier_detection.outlier_detection_tso_step

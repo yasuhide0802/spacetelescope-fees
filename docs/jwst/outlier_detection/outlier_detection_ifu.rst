@@ -3,6 +3,9 @@
 Outlier Detection for IFU Data
 ==============================
 
+:Classes: `jwst.outlier_detection.OutlierDetectionIFUStep`
+:Aliases: outlier_detection_ifu
+
 This module serves as the interface for applying ``outlier_detection`` to IFU
 observations, like those taken with NIRSpec and MIRI.  The code implements the
 basic outlier detection algorithm searching for pixels that are consistent outliers
@@ -30,5 +33,31 @@ through this stack is determined and normalized. The normalization uses a local 
 is greater than the input threshold percentage.  Pixels that are found to be outliers are flaged in in the DQ array.
 
 
+Step Arguments
+==============
 
-.. automodapi:: jwst.outlier_detection.ifu
+``--kernel_size``
+  The size of the kernel to use to normalize the pixel differences. The kernel size
+  must only contain odd values. Valid values are a pair of ints in a single string
+  (for example "7 7").
+
+``--threshold_percent``
+  The threshold (in percent) of the normalized minimum pixel difference used to identify bad pixels.
+  Pixels with   a normalized minimum pixel difference above this percentage are flagged as a outlier.
+
+``--ifu_second_check``
+  FIXME: WHAT IS THIS?
+
+``--save_intermediate_results``
+  Specifies whether or not to save any intermediate products created
+  during step processing.
+
+
+Reference Files
+===============
+
+The ``outlier_detection_ifu`` step uses the PARS-OUTLIERDETECTIONIFUSTEP parameter reference file.
+
+.. include:: ../references_general/pars-outlierdetectionifustep_reffile.inc
+
+.. automodapi:: jwst.outlier_detection.outlier_detection_ifu_step

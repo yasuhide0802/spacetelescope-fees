@@ -33,7 +33,7 @@ class OutlierDetectionIFUStep(Step, OutlierDetectionStepBase):
 
     Notes
     -----
-    This routine performs the following operations::
+    This routine performs the following operations.
 
     1. Extracts parameter settings from input ModelContainer and merges
         them with any user-provided values
@@ -59,7 +59,6 @@ class OutlierDetectionIFUStep(Step, OutlierDetectionStepBase):
         threshold_percent = float(default=99.8)
         ifu_second_check = boolean(default=False)
         save_intermediate_results = boolean(default=False)
-        good_bits = string(default="~DO_NOT_USE")  # DQ flags to allow
     """
 
     def process(self, input_models):
