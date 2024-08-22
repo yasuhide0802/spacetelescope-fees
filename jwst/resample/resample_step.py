@@ -5,6 +5,7 @@ from copy import deepcopy
 import asdf
 
 from stdatamodels.jwst import datamodels
+from ..datamodels.library import ModelLibrary
 
 from jwst.datamodels import ModelContainer
 
@@ -61,9 +62,9 @@ class ResampleStep(Step):
 
     def process(self, input):
 
-        input = datamodels.open(input)
+        # input = datamodels.open(input)
 
-        if isinstance(input, ModelContainer):
+        if isinstance(input, ModelLibrary):
             input_models = input
             try:
                 output = input_models.meta.asn_table.products[0].name
@@ -73,16 +74,11 @@ class ResampleStep(Step):
                 # TODO: figure out why and make sure asn_table is carried along
                 output = None
         else:
-            input_models = ModelContainer([input])
+            input_models = ModelLibrary([input])
             input_models.asn_pool_name = input.meta.asn.pool_name
             input_models.asn_table_name = input.meta.asn.table_name
             output = input.meta.filename
             self.blendheaders = False
-
-        # Check that input models are 2D images
-        if len(input_models[0].data.shape) != 2:
-            # resample can only handle 2D images, not 3D cubes, etc
-            raise RuntimeError("Input {} is not a 2D image.".format(input_models[0]))
 
         # Setup drizzle-related parameters
         kwargs = self.get_drizpars()
@@ -99,7 +95,6 @@ class ResampleStep(Step):
         resamp.run()
         result = resamp.output_model
 
-        input_models.close()
         return result
 
     @staticmethod
