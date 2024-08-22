@@ -7,13 +7,11 @@ import os
 from stdatamodels.jwst import datamodels
 
 from jwst.datamodels import ModelContainer
-from jwst.outlier_detection import OutlierDetectionStep
 from jwst.outlier_detection.utils import flag_resampled_model_crs
-from jwst.outlier_detection.outlier_detection_step import (
-    IMAGE_MODES,
-    TSO_SPEC_MODES,
-    TSO_IMAGE_MODES,
-    CORON_IMAGE_MODES,
+from jwst.outlier_detection import (
+    OutlierDetectionTSOStep,
+    OutlierDetectionCoronStep,
+    OutlierDetectionImagingStep,
 )
 from jwst.assign_wcs.pointing import create_fitswcs
 
@@ -21,10 +19,13 @@ OUTLIER_DO_NOT_USE = np.bitwise_or(
     datamodels.dqflags.pixel["DO_NOT_USE"], datamodels.dqflags.pixel["OUTLIER"]
 )
 
-# TSO types to test
-exptypes_tso = [(exptype, True) for exptype in TSO_SPEC_MODES + TSO_IMAGE_MODES]
-exptypes_tso.append(("MIR_IMAGE", True))
-# CORON types to test
+IMAGE_MODES = ['NRC_IMAGE', 'MIR_IMAGE', 'NRS_IMAGE', 'NIS_IMAGE', 'FGS_IMAGE']
+
+TSO_MODES = ['NIS_SOSS', 'MIR_LRS-SLITLESS', 'NRC_TSGRISM',
+             'NRS_BRIGHTOBJ', 'NRC_TSIMAGE', 'MIR_IMAGE']
+exptypes_tso = [(exptype, True) for exptype in TSO_MODES]
+
+CORON_IMAGE_MODES = ['NRC_CORON', 'MIR_LYOT', 'MIR_4QPM']
 exptypes_coron = [(exptype, False) for exptype in CORON_IMAGE_MODES]
 
 
@@ -195,7 +196,7 @@ def test_outlier_step_no_outliers(we_three_sci, tmp_cwd):
     """Test whole step, no outliers"""
     container = ModelContainer(list(we_three_sci))
     pristine = ModelContainer([m.copy() for m in container])
-    OutlierDetectionStep.call(container)
+    OutlierDetectionImagingStep.call(container)
 
     # Make sure nothing changed in SCI and DQ arrays
     for image, uncorrected in zip(pristine, container):
@@ -211,13 +212,13 @@ def test_outlier_step(we_three_sci, tmp_cwd):
     container[0].data[12, 12] += 1
 
     # Verify that intermediary files are removed
-    OutlierDetectionStep.call(container)
+    OutlierDetectionImagingStep.call(container)
     i2d_files = glob(os.path.join(tmp_cwd, '*i2d.fits'))
     median_files = glob(os.path.join(tmp_cwd, '*median.fits'))
     assert len(i2d_files) == 0
     assert len(median_files) == 0
 
-    result = OutlierDetectionStep.call(
+    result = OutlierDetectionImagingStep.call(
         container, save_results=True, save_intermediate_results=True
     )
 
@@ -253,7 +254,7 @@ def test_outlier_step_on_disk(we_three_sci, tmp_cwd):
     # Initialize inputs for the test based on filenames only
     container = ModelContainer(filenames)
 
-    result = OutlierDetectionStep.call(
+    result = OutlierDetectionImagingStep.call(
         container, save_results=True, save_intermediate_results=True
     )
 
@@ -278,7 +279,7 @@ def test_outlier_step_square_source_no_outliers(we_three_sci, tmp_cwd):
         ccont.data[5:15, 5:15] += 1e3
 
     pristine = container.copy()
-    result = OutlierDetectionStep.call(container)
+    result = OutlierDetectionImagingStep.call(container)
 
     # Make sure nothing changed in SCI and DQ arrays
     for image, uncorrected in zip(pristine, container):
@@ -307,7 +308,7 @@ def test_outlier_step_image_weak_CR_dither(exptype, tmp_cwd):
     # no noise so it should always be above the default threshold of 5
     container[0].data[12, 12] = bkg + sig * 10
 
-    result = OutlierDetectionStep.call(container)
+    result = OutlierDetectionImagingStep.call(container)
 
     # Make sure nothing changed in SCI array
     for image, corrected in zip(container, result):
@@ -339,7 +340,7 @@ def test_outlier_step_image_weak_CR_coron(exptype, tsovisit, tmp_cwd):
     # coron3 will provide a CubeModel so convert the container to a cube
     cube = container_to_cube(container)
 
-    result = OutlierDetectionStep.call(cube)
+    result = OutlierDetectionCoronStep.call(cube)
 
     # Make sure nothing changed in SCI array
     for i, image in enumerate(container):
@@ -379,7 +380,7 @@ def test_outlier_step_weak_cr_tso(exptype, tsovisit):
 
     cube = container_to_cube(im)
 
-    result = OutlierDetectionStep.call(cube, rolling_window_width=rolling_window_width)
+    result = OutlierDetectionTSOStep.call(cube, rolling_window_width=rolling_window_width)
 
     # Make sure nothing changed in SCI array
     for i, model in enumerate(im):
