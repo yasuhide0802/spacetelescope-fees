@@ -1,6 +1,8 @@
 """
 The ever-present utils sub-module. A home for all...
 """
+from abc import ABC, abstractmethod
+from functools import partial
 import warnings
 
 import numpy as np
@@ -16,6 +18,41 @@ log.setLevel(logging.DEBUG)
 
 DO_NOT_USE = datamodels.dqflags.pixel['DO_NOT_USE']
 OUTLIER = datamodels.dqflags.pixel['OUTLIER']
+
+class OutlierDetectionStepBase(ABC):
+    """Minimal base class holding common methods for outlier detection steps."""
+
+    @abstractmethod
+    def search_attr(self, attr, **kwargs):
+        pass
+
+    @abstractmethod
+    def _make_output_path(self):
+        pass
+
+    def _get_asn_id(self, input_models):
+        # handle if input_models isn't open
+        if not isinstance(input_models, datamodels.JwstDataModel):
+            input_models = datamodels.open(input_models, asn_n_members=1)
+
+        # Setup output path naming if associations are involved.
+        asn_id = None
+        try:
+            asn_id = input_models.meta.asn_table.asn_id
+        except (AttributeError, KeyError):
+            pass
+        if asn_id is None:
+            asn_id = self.search_attr('asn_id')
+        if asn_id is not None:
+            _make_output_path = self.search_attr(
+                '_make_output_path', parent_first=True
+            )
+
+            self._make_output_path = partial(
+                _make_output_path,
+                asn_id=asn_id
+            )
+        return asn_id
 
 
 def create_cube_median(cube_model, maskpt):

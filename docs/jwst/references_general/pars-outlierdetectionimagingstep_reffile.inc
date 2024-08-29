@@ -1,9 +1,9 @@
-.. _pars_outlierdetectionstep_reffile:
+.. _pars_outlierdetectionimagingstep_reffile:
 
-PARS-OUTLIERDETECTIONSTEP Parameter Reference File
---------------------------------------------------
+PARS-OUTLIERDETECTIONIMAGINGSTEP Parameter Reference File
+---------------------------------------------------------
 
-:REFTYPE: PARS-OUTLIERDETECTIONSTEP
+:REFTYPE: PARS-OUTLIERDETECTIONIMAGINGSTEP
 :Data model: N/A
 
 Reference Selection Keywords
