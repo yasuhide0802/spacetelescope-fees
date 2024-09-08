@@ -215,6 +215,8 @@ stpipe
 
 - Log jwst version at end of `Step.run`. [#8769]
 
+- Add warning that `Step.__call__` is deprecated. [#8761]
+
 tso_photometry
 --------------
 
