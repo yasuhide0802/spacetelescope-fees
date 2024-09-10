@@ -132,6 +132,8 @@ pipeline
   optional `on_disk` parameter to govern whether models in the library should be stored
   in memory or on disk. [#8683]
 
+- Updated `calwebb_spec3` to not save the `pixel_replacement` output by default.[#8765] 
+
 resample
 --------
 
