@@ -34,6 +34,11 @@ associations
 
 - Update warning message about use of paths in associations. [#8752]
 
+calwebb_coron3
+--------------
+
+- Tighten tolerance of psf alignment. [#8717]
+
 cube_build
 ----------
 
