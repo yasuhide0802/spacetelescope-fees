@@ -139,6 +139,9 @@ photom
 - Ensure that NaNs and DO_NOT_USE flags match up in all output science, error,
   variance, and DQ extensions. [#8557]
 
+- Refactored separate modes into submodules instead of inheriting from a base class.
+  Moved non-JWST-specific code to stcal. [#8613]
+
 pipeline
 --------
 
@@ -151,6 +154,12 @@ ramp_fitting
 
 - Moved the read noise variance recalculation for CHARGELOSS flagging to the C
   implementation, when the algorithm is ``OLS_C``. [#8697, spacetelescope/stcal#278]
+
+refpix
+------
+
+- Add optimized convolution kernel instead of the running median for NIR
+  fullframe data. [#8726]
 
 resample
 --------
