@@ -51,7 +51,8 @@ cube_build
 - Ensure that NaNs and DO_NOT_USE flags match up in all input data before
   building a cube. [#8557]
 
-- Allow the user to provide ra and dec shifts to apply for each file to fine tune the WCS. [#JP-3364]
+- Allow the user to provide ra and dec shifts to apply for each file to fine
+  tune the WCS. [#JP-3364]
 
 datamodels
 ----------
