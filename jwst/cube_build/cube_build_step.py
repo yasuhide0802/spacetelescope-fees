@@ -2,15 +2,15 @@
 """
 
 import time
-
 from jwst.datamodels import ModelContainer
 from jwst.lib.pipe_utils import match_nans_and_flags
-
 from . import cube_build
 from . import ifu_cube
 from . import data_types
+import asdf
 from ..assign_wcs.util import update_s_region_keyword
 from ..stpipe import Step, record_step_status
+from pathlib import Path
 
 __all__ = ["CubeBuildStep"]
 
@@ -64,6 +64,7 @@ class CubeBuildStep (Step):
          search_output_file = boolean(default=false)
          output_use_model = boolean(default=true) # Use filenames in the output models
          suffix = string(default='s3d')
+         offset_file = string(default=None)
          debug_spaxel = string(default='-1 -1 -1') # Default not used
        """
 
@@ -235,7 +236,18 @@ class CubeBuildStep (Step):
                 self.output_type = 'channel'
         self.pars_input['output_type'] = self.output_type
         self.log.info(f'Setting output type to: {self.output_type}')
-
+# ________________________________________________________________________________
+# If an offset file is provided do some basic checks on the file and its contents.
+# The offset list contains a matching list to the files in the association
+# used in calspec3 (or offline cube building).
+# Each row in the offset list contain a filename, ra offset and dec offset.
+# The offset list is an asdf file.
+        self.offsets = None
+        if self.offset_file is not None:
+            offsets = self.check_offset_file()
+            if offsets is not None:
+                self.offsets = offsets
+# ________________________________________________________________________________
 # Read in Cube Parameter Reference file
 # identify what reference file has been associated with these input
 
@@ -276,6 +288,7 @@ class CubeBuildStep (Step):
             'roiw': self.roiw,
             'wavemin': self.wavemin,
             'wavemax': self.wavemax,
+            'offsets': self.offsets,
             'skip_dqflagging': self.skip_dqflagging,
             'suffix': self.suffix,
             'debug_spaxel': self.debug_spaxel}
@@ -530,3 +543,55 @@ class CubeBuildStep (Step):
 # remove duplicates if needed
             self.pars_input['grating'] = list(set(self.pars_input['grating']))
 # ________________________________________________________________________________
+
+    def check_offset_file(self):
+        """Read in an optional ra and dec offsets for each file.
+
+        Summary
+        ----------
+        Check that is file is asdf file.
+        check the file has the correct format:
+        For each file in the input  assocation check that there is a corresponding
+        file in the offset file.
+        Also check that each file in the offset list contain a ra offset and dec offset.
+
+       """
+
+        # validate the offset file using the schema file
+        DATA_PATH = Path(__file__).parent
+        
+        try:
+            af = asdf.open(self.offset_file, custom_schema=DATA_PATH/'ifuoffset.schema.yaml')
+        except:
+            self.log.error('Validation Error for offset file')
+            self.log.error('Turning off adjusting by offsets')
+            return None
+
+
+        offset_filename = af['filename']
+        offset_ra = af['raoffset']
+        offset_dec = af['decoffset']
+        offset_unit = af['units']
+
+        if offset_unit != 'arcsec':
+            self.log.error('Provide the offset units in units of arcsec ')
+            self.log.error('Turning off adjusting by offsets ')
+            af.close()
+            return None
+
+        for model in self.input_models:
+            file_check = model.meta.filename
+            if file_check in offset_filename:
+                continue
+            else:
+                self.log.error('File in assocation is not found in offset list list %s', file_check)
+                self.log.error('Turning off adjusting by offsets')
+                af.close()
+                return None
+        offsets = {}
+        offsets['filename'] = offset_filename
+        offsets['raoffset'] = offset_ra
+        offsets['decoffset'] = offset_dec
+
+        af.close()
+        return offsets
